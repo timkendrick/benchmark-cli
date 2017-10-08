@@ -1,0 +1,39 @@
+{
+  "name": "@timkendrick/benchmark-cli",
+  "version": "0.0.1",
+  "description": "Command-line performance benchmarking for JavaScript",
+  "main": "index.js",
+  "scripts": {
+    "prepush": "npm test",
+    "test": "eslint bin/* lib"
+  },
+  "bin": {
+    "benchmark": "bin/benchmark"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timkendrick/benchmark-cli.git"
+  },
+  "author": "Tim Kendrick <timkendrick@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/timkendrick/benchmark-cli/issues"
+  },
+  "homepage": "https://github.com/timkendrick/benchmark-cli",
+  "dependencies": {
+    "benchmark": "^2.0.0",
+    "chalk": "^2.0.0",
+    "microtime": "^2.0.0",
+    "minimist": "^1.2.0",
+    "ora": "^1.0.0"
+  },
+  "devDependencies": {
+    "@timkendrick/eslint-config": "^1.0.0",
+    "eslint": "^4.0.0",
+    "husky": "^0.14.0"
+  }
+}

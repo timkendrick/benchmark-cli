@@ -1,0 +1,92 @@
+#!/usr/bin/env node
+const chalk = require('chalk');
+const ora = require('ora');
+const path = require('path');
+const minimist = require('minimist');
+
+const run = require('../lib/index');
+
+const args = minimist(process.argv.slice(2));
+
+// eslint-disable-next-line no-nested-ternary
+const evalFiles = (args.e ? Array.isArray(args.e) ? args.e : [args.e] : []).map((code) => ({
+  name: code,
+  suite: eval(code), // eslint-disable-line no-eval
+}));
+const inputFiles = (args._ || []).map((filePath) => ({
+  name: path.basename(filePath),
+  // eslint-disable-next-line global-require,import/no-dynamic-require
+  suite: require(path.resolve(process.cwd(), filePath)),
+}));
+
+const files = [...evalFiles, ...inputFiles];
+
+if (files.length === 0) {
+  process.stderr.write('No input file specified\n');
+  process.exit(1);
+}
+
+const suiteDefinitions = files.map(({ name, suite }) => {
+  const isValidSuite = (
+    isValidBenchmarkSuite(suite)
+    || (Array.isArray(suite) && suite.every(isValidBenchmarkSuite))
+  );
+  if (!isValidSuite) {
+    process.stderr.write(`Invalid input file: ${name}\n`);
+    process.exit(1);
+  }
+  return (Array.isArray(suite)
+    ? suite.map((tests, index) => ({
+      name: `${name} #${index + 1}`,
+      benchmarks: parseTests(tests),
+    }))
+    : { name, benchmarks: parseTests(suite) }
+  );
+}).reduce((suites, suite) => suites.concat(suite), []);
+
+let currentSuite = 0;
+let spinner;
+run(suiteDefinitions, {
+  onStart(suite, benchmark) {
+    // eslint-disable-next-line no-plusplus
+    process.stdout.write(`\nRunning ${suite.name} (${++currentSuite} of ${suiteDefinitions.length}):\n`);
+    spinner = ora(benchmark.name).start();
+  },
+  onNext(suite, previousBenchmark, nextBenchmark) {
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    if (previousBenchmark.error) {
+      spinner.fail(`${previousBenchmark}${previousBenchmark.error}`);
+    } else {
+      spinner.succeed(previousBenchmark.toString());
+    }
+    spinner = nextBenchmark ? ora(nextBenchmark.name).start() : undefined;
+  },
+  onComplete(suite, results) {
+    if (results.length <= 1) { return; }
+    const fastest = results[0];
+    const secondFastest = (results[1] && results[1].hz ? results[1] : undefined);
+    process.stdout.write(`${chalk.bold(
+      secondFastest
+        ? `${fastest.name} is ${(100 * ((fastest.hz / secondFastest.hz) - 1)).toFixed(2)}% faster`
+        : `${fastest.name} is fastest`
+    )}\n`);
+  },
+});
+
+function isValidBenchmarkSuite(benchmarks) {
+  return Boolean(
+    benchmarks
+    && (
+      (typeof benchmarks === 'function')
+      || ((typeof benchmarks === 'object')
+        && Object.keys(benchmarks).every((key) => (typeof benchmarks[key] === 'function'))
+      )
+    )
+  );
+}
+
+function parseTests(tests) {
+  if (typeof tests === 'function') { return [{ name: '[no name]', test: tests }]; }
+  return Object.keys(tests).map((key) => ({ name: key, test: tests[key] }));
+}
