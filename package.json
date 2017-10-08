@@ -1,6 +1,6 @@
 {
   "name": "@timkendrick/benchmark-cli",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Command-line performance benchmarking for JavaScript",
   "main": "index.js",
   "scripts": {
